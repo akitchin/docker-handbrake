@@ -166,7 +166,6 @@ public class App {
 					for (Integer trackNumber : tracks) {
 						encode(args[0],args[1],directoryName,e.getValue().getName() + "_" + discTitle + "_T" + trackNumber,trackNumber);
 					}
-					System.exit(-1);
 				}
 			}
 		} catch (Exception e) {
@@ -198,7 +197,7 @@ public class App {
 			pb.directory(new File(encodeDir));
 			Process p = pb.start();
 			BufferedReader reader = new BufferedReader(new InputStreamReader(
-					p.getErrorStream()));
+					p.getInputStream()));
 			String line;
 			while ((line = reader.readLine()) != null) {
 				System.out.println(line);
