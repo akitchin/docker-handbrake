@@ -4,13 +4,18 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -91,32 +96,59 @@ public class App {
 		return files;
 	}
 
+	public static String getHandbrakeVersion(String handbrakeLocation, String workingDir) throws IOException {
+		ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "--version");
+		Map<String, String> env = pb.environment();
+		pb.directory(new File(workingDir));
+		Process p = pb.start();
+		BufferedReader reader = new BufferedReader(new InputStreamReader(
+				p.getInputStream()));
+		String line,result="";
+		while ((line = reader.readLine()) != null) {
+			result += line;
+		}
+		return result;
+	}
+
+	public static Set<Integer> getTitleDurations(String handbrakeLocation, String workingDir) throws IOException,ParseException {
+		Pattern pa = Pattern.compile("[0-9]+");
+		ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "-i", workingDir, "-t", "0");
+		Map<String, String> env = pb.environment();
+		pb.directory(new File(workingDir));
+		Process p = pb.start();
+		BufferedReader reader = new BufferedReader(new InputStreamReader(
+				p.getErrorStream()));
+		String line;
+		Integer currentTitle=0;
+		Set<Integer> results=new HashSet<Integer>();
+		while ((line = reader.readLine()) != null) {
+			if (line.toLowerCase().indexOf("title") > -1 && line.toLowerCase().indexOf('+') == 0) {
+				Matcher m = pa.matcher(line);
+				if (m.find()) {
+					currentTitle = Integer.parseInt(m.group());
+				}
+			}
+		    if (line.toLowerCase().indexOf("duration") > -1 && line.toLowerCase().indexOf('+') == 2) {
+		    	Date d = new SimpleDateFormat("HH:mm:ss").parse(line.replaceAll("  \\+ duration: ", ""));
+				if (((d.getHours() * 60) + d.getMinutes()) >= 20) {
+					results.add(currentTitle);
+				}
+			}
+		}
+		return results;
+	}
+	
+	
 	public static void main(String[] args) {
 
 		try {
 			System.out.println("Welcome to the NAS Runner");
 
-			ProcessBuilder pb = new ProcessBuilder(args[0], "--version");
-			Map<String, String> env = pb.environment();
-			pb.directory(new File(args[1]));
-			Process p = pb.start();
-			BufferedReader reader = new BufferedReader(new InputStreamReader(
-					p.getInputStream()));
-			String line;
-			while ((line = reader.readLine()) != null) {
-				System.out.println("\t" + line);
-			}
+			String version=getHandbrakeVersion(args[0], args[1]);
+			System.out.println("\t" + version);
+			
 
-			Map<String, ShowOrMovie> data = new HashMap<String, ShowOrMovie>();
-			List<File> files = findDVDS(new File(args[1]));
-			for (File file : files) {
-				String name = guessName(file);
-				String componentName = guessComponentName(file);
-				if (!data.containsKey(name)) {
-					data.put(name, new ShowOrMovie(name));
-				}
-				data.get(name).getComponents().put(componentName, file);
-			}
+			Map<String, ShowOrMovie> data = findDvdsAndShows(args[1]);
 			
 			Iterator<Entry<String, ShowOrMovie>> it = data.entrySet()
 					.iterator();
@@ -126,13 +158,52 @@ public class App {
 				Iterator<String> it2 = e.getValue().getComponents().keySet()
 						.iterator();
 				while (it2.hasNext()) {
-					System.out.println("\t" + it2.next());
+					String discTitle = it2.next();
+					String directoryName = e.getValue().getComponents().get(discTitle).getAbsolutePath();
+					System.out.println("\t" + discTitle);
+					Set<Integer> tracks=getTitleDurations(args[0], directoryName);
+					System.out.println("\t\t" + tracks);
+					for (Integer trackNumber : tracks) {
+						encode(args[0],args[1],directoryName,e.getValue().getName() + "_" + discTitle + "_T" + trackNumber,trackNumber);
+					}
+					System.exit(-1);
 				}
 			}
-		} catch (IOException e) {
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
 	}
+
+	private static Map<String, ShowOrMovie> findDvdsAndShows(String workingDir) {
+		Map<String, ShowOrMovie> data = new HashMap<String, ShowOrMovie>();
+		List<File> files = findDVDS(new File(workingDir));
+		for (File file : files) {
+			String name = guessName(file);
+			String componentName = guessComponentName(file);
+			if (!data.containsKey(name)) {
+				data.put(name, new ShowOrMovie(name));
+			}
+			data.get(name).getComponents().put(componentName, file);
+		}
+		return data;
+	}
+	
+	private static void encode(String handbrakeLocation, String outputDir, String encodeDir, String title, Integer track) throws IOException {
+		System.out.println(outputDir + "/" + title +".mp4");
+		if (!new File(outputDir + "/" + title +".mp4").exists()) {
+			ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "-i", encodeDir, "-t", "" + track,"-Z","\"AppleTV 3\"", "-E", "ffaac", "-o", outputDir + "/" + title +".mp4");
+			Map<String, String> env = pb.environment();
+			pb.directory(new File(encodeDir));
+			Process p = pb.start();
+			BufferedReader reader = new BufferedReader(new InputStreamReader(
+					p.getErrorStream()));
+			String line;
+			while ((line = reader.readLine()) != null) {
+				System.out.println(line);
+			}
+		}
+	}
+	
 }
