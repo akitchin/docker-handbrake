@@ -8,7 +8,7 @@ RUN \
   add-apt-repository -y ppa:webupd8team/java && \
   add-apt-repository -y ppa:stebbins/handbrake-git-snapshots && \
   apt-get update && \
-  apt-get install -y oracle-java7-installer handbrake-cli && \
+  apt-get install -y oracle-java7-installer handbrake-cli curl unzip maven && \
   rm -rf /var/lib/apt/lists/* && \
   rm -rf /var/cache/oracle-jdk7-installer
 
@@ -23,10 +23,13 @@ RUN \
   rm -rf /var/lib/apt/lists/* && \
   rm -rf /var/cache/oracle-jdk7-installer
 
+RUN curl -L https://github.com/akitchin/docker-handbrake/archive/master.zip > master.zip
+RUN cd /docker-handbrake-master/nas-runner && mvn install
+
 # Define working directory.
 VOLUME /data
 
 # Define commonly used JAVA_HOME variable
 ENV JAVA_HOME /usr/lib/jvm/java-7-oracle
 
-CMD ["bash"]
+CMD ["mvn", "exec:java", "-Dexec.mainClass=\"com.hazmit.nas_runner.App\"" "-Dexec.args=\"/usr/bin/HandBrakeCLI /data/INCOMING\""]
