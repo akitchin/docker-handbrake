@@ -192,16 +192,21 @@ public class App {
 	private static void encode(String handbrakeLocation, String outputDir, String encodeDir, String title, Integer track) throws IOException {
 		System.out.println(outputDir + "/" + title +".mp4");
 		if (!new File(outputDir + "/" + title +".mp4").exists()) {
-			ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "-i", encodeDir, "-t", "" + track,"-Z","\"AppleTV 3\"", "-E", "ffaac", "-o", outputDir + "/" + title +".mp4");
+			ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "-i", encodeDir, "-t", "" + track,"-Z","AppleTV 3", "-E", "ffaac", "-o", outputDir + "/" + title +".mp4");
 			Map<String, String> env = pb.environment();
 			pb.directory(new File(encodeDir));
 			Process p = pb.start();
 			BufferedReader reader = new BufferedReader(new InputStreamReader(
 					p.getInputStream()));
+			BufferedReader reader2 = new BufferedReader(new InputStreamReader(
+                                        p.getErrorStream()));
 			String line;
 			while ((line = reader.readLine()) != null) {
 				System.out.println(line);
 			}
+			while ((line = reader2.readLine()) != null) {
+                                System.out.println(line);
+                        }
 		}
 	}
 	
