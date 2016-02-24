@@ -33,4 +33,4 @@ VOLUME /data
 # Define commonly used JAVA_HOME variable
 ENV JAVA_HOME /usr/lib/jvm/java-7-oracle
 
-CMD ["mvn", "exec:java", "-Dexec.mainClass=\"com.hazmit.nas_runner.App\"", "-Dexec.args=\"/usr/bin/HandBrakeCLI /data/INCOMING\""]
+CMD ["cd", "/docker-handbrake-master/nas-runner", "&&", "mvn", "exec:java", "-Dexec.mainClass=\"com.hazmit.nas_runner.App\"", "-Dexec.args=\"/usr/bin/HandBrakeCLI /data/INCOMING\""]
