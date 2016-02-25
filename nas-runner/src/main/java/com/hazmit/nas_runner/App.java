@@ -232,7 +232,7 @@ public class App {
 			String encodeDir, String title, Integer track) throws IOException {
 		System.out.println(outputDir + "/" + title.substring(0, 1).toLowerCase() + "/" + title + ".mp4");
 		File f=new File(outputDir + "/" + title.substring(0, 1).toLowerCase() + "/" + title + ".mp4");
-		f.mkdirs();
+		f.getParentFile().mkdirs();
 		if (!f.exists()) {
 			ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "-i",
 					encodeDir, "-t", "" + track, "-Z", "AppleTV 3", "-E",
