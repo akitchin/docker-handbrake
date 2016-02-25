@@ -4,6 +4,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -26,6 +29,8 @@ import org.apache.commons.lang.WordUtils;
  *
  */
 public class App {
+	
+	private static String LOCK_FILE_NAME = ".lockedAJK";
 
 	public static boolean looksLikeDVD(File file) {
 		if (file == null || file.isFile()) {
@@ -96,40 +101,46 @@ public class App {
 		return files;
 	}
 
-	public static String getHandbrakeVersion(String handbrakeLocation, String workingDir) throws IOException {
+	public static String getHandbrakeVersion(String handbrakeLocation,
+			String workingDir) throws IOException {
 		ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "--version");
 		Map<String, String> env = pb.environment();
 		pb.directory(new File(workingDir));
 		Process p = pb.start();
 		BufferedReader reader = new BufferedReader(new InputStreamReader(
 				p.getInputStream()));
-		String line,result="";
+		String line, result = "";
 		while ((line = reader.readLine()) != null) {
 			result += line;
 		}
 		return result;
 	}
 
-	public static Set<Integer> getTitleDurations(String handbrakeLocation, String workingDir) throws IOException,ParseException {
+	public static Set<Integer> getTitleDurations(String handbrakeLocation,
+			String workingDir) throws IOException, ParseException {
 		Pattern pa = Pattern.compile("[0-9]+");
-		ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "-i", workingDir, "-t", "0");
+		ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "-i",
+				workingDir, "-t", "0");
 		Map<String, String> env = pb.environment();
 		pb.directory(new File(workingDir));
 		Process p = pb.start();
 		BufferedReader reader = new BufferedReader(new InputStreamReader(
 				p.getErrorStream()));
 		String line;
-		Integer currentTitle=0;
-		Set<Integer> results=new HashSet<Integer>();
+		Integer currentTitle = 0;
+		Set<Integer> results = new HashSet<Integer>();
 		while ((line = reader.readLine()) != null) {
-			if (line.toLowerCase().indexOf("title") > -1 && line.toLowerCase().indexOf('+') == 0) {
+			if (line.toLowerCase().indexOf("title") > -1
+					&& line.toLowerCase().indexOf('+') == 0) {
 				Matcher m = pa.matcher(line);
 				if (m.find()) {
 					currentTitle = Integer.parseInt(m.group());
 				}
 			}
-		    if (line.toLowerCase().indexOf("duration") > -1 && line.toLowerCase().indexOf('+') == 2) {
-		    	Date d = new SimpleDateFormat("HH:mm:ss").parse(line.replaceAll("  \\+ duration: ", ""));
+			if (line.toLowerCase().indexOf("duration") > -1
+					&& line.toLowerCase().indexOf('+') == 2) {
+				Date d = new SimpleDateFormat("HH:mm:ss").parse(line
+						.replaceAll("  \\+ duration: ", ""));
 				if (((d.getHours() * 60) + d.getMinutes()) >= 20) {
 					results.add(currentTitle);
 				}
@@ -137,19 +148,32 @@ public class App {
 		}
 		return results;
 	}
-	
+
+	public static boolean isDirectoryLocked(String directoryName) {
+		return new File(directoryName + File.separator + LOCK_FILE_NAME).exists();
+	}
+
+	public static void lockDirectory(String directoryName) throws IOException {
+		File f = new File(directoryName + File.separator + LOCK_FILE_NAME);
+		f.getParentFile().mkdirs(); 
+		f.createNewFile();
+	}
+
+	public static void unlockDirectory(String directoryName) {
+		File f = new File(directoryName + File.separator + LOCK_FILE_NAME);
+		f.delete();
+	}
 	
 	public static void main(String[] args) {
 
 		try {
 			System.out.println("Welcome to the NAS Runner");
 
-			String version=getHandbrakeVersion(args[0], args[1]);
+			String version = getHandbrakeVersion(args[0], args[1]);
 			System.out.println("\t" + version);
-			
 
 			Map<String, ShowOrMovie> data = findDvdsAndShows(args[1]);
-			
+
 			Iterator<Entry<String, ShowOrMovie>> it = data.entrySet()
 					.iterator();
 			while (it.hasNext()) {
@@ -159,12 +183,27 @@ public class App {
 						.iterator();
 				while (it2.hasNext()) {
 					String discTitle = it2.next();
-					String directoryName = e.getValue().getComponents().get(discTitle).getAbsolutePath();
-					System.out.println("\t" + discTitle);
-					Set<Integer> tracks=getTitleDurations(args[0], directoryName);
-					System.out.println("\t\t" + tracks);
-					for (Integer trackNumber : tracks) {
-						encode(args[0],args[1],directoryName,e.getValue().getName() + "_" + discTitle + "_T" + trackNumber,trackNumber);
+					String directoryName = e.getValue().getComponents()
+							.get(discTitle).getAbsolutePath();
+					if (!isDirectoryLocked(directoryName)){
+						try {
+								lockDirectory(directoryName);
+								System.out.println("\t" + discTitle);
+								Set<Integer> tracks = getTitleDurations(args[0],
+										directoryName);
+								System.out.println("\t\t" + tracks);
+								for (Integer trackNumber : tracks) {
+									encode(args[0], args[1], directoryName, e.getValue()
+											.getName()
+											+ " "
+											+ discTitle
+											+ "T"
+											+ trackNumber, trackNumber);
+								}
+								Files.move(Paths.get(directoryName), Paths.get(args[1] + File.separator + discTitle), StandardCopyOption.ATOMIC_MOVE);
+						} finally {
+							unlockDirectory(directoryName);
+						}
 					}
 				}
 			}
@@ -188,26 +227,31 @@ public class App {
 		}
 		return data;
 	}
-	
-	private static void encode(String handbrakeLocation, String outputDir, String encodeDir, String title, Integer track) throws IOException {
-		System.out.println(outputDir + "/" + title +".mp4");
-		if (!new File(outputDir + "/" + title +".mp4").exists()) {
-			ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "-i", encodeDir, "-t", "" + track,"-Z","AppleTV 3", "-E", "ffaac", "-o", outputDir + "/" + title +".mp4");
+
+	private static void encode(String handbrakeLocation, String outputDir,
+			String encodeDir, String title, Integer track) throws IOException {
+		System.out.println(outputDir + "/" + title.substring(0, 1).toLowerCase() + "/" + title + ".mp4");
+		File f=new File(outputDir + "/" + title.substring(0, 1).toLowerCase() + "/" + title + ".mp4");
+		f.mkdirs();
+		if (!f.exists()) {
+			ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "-i",
+					encodeDir, "-t", "" + track, "-Z", "AppleTV 3", "-E",
+					"ffaac", "-o", outputDir + "/" + title + ".mp4");
 			Map<String, String> env = pb.environment();
 			pb.directory(new File(encodeDir));
 			Process p = pb.start();
 			BufferedReader reader = new BufferedReader(new InputStreamReader(
 					p.getInputStream()));
 			BufferedReader reader2 = new BufferedReader(new InputStreamReader(
-                                        p.getErrorStream()));
+					p.getErrorStream()));
 			String line;
 			while ((line = reader.readLine()) != null) {
 				System.out.println(line);
 			}
 			while ((line = reader2.readLine()) != null) {
-                                System.out.println(line);
-                        }
+				System.out.println(line);
+			}
 		}
 	}
-	
+
 }
