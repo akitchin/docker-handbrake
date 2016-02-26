@@ -164,6 +164,18 @@ public class App {
 		f.delete();
 	}
 	
+	public static String getDvdLocation(String discTitle, String outputDir, ShowOrMovie showOrMovie) {
+		if (showOrMovie.getComponents().size() == 1 && "-".equals(discTitle)) {
+			File f=new File(outputDir + "/" + stripFirstWordIfStopWord(showOrMovie.getName()).substring(0, 1) + "/" + showOrMovie.getName());
+			f.mkdirs();
+			return outputDir + "/" + stripFirstWordIfStopWord(showOrMovie.getName()).substring(0, 1) + "/" + showOrMovie.getName() + "/VIDEO_TS";			
+		} else {
+			File f=new File(outputDir + "/" + stripFirstWordIfStopWord(showOrMovie.getName()).substring(0, 1) + "/" + showOrMovie.getName() + "/VIDEO_TS");
+			f.mkdirs();
+			return outputDir + "/" + stripFirstWordIfStopWord(showOrMovie.getName()).substring(0, 1) + "/" + showOrMovie.getName() + "/VIDEO_TS/discTitle";			
+		}
+	}
+	
 	public static void main(String[] args) {
 
 		try {
@@ -200,7 +212,7 @@ public class App {
 											+ "T"
 											+ trackNumber, trackNumber);
 								}
-								Files.move(Paths.get(directoryName), Paths.get(args[1] + File.separator + discTitle), StandardCopyOption.ATOMIC_MOVE);
+								Files.move(Paths.get(directoryName), Paths.get(getDvdLocation(discTitle, args[1], e.getValue())), StandardCopyOption.ATOMIC_MOVE);
 						} finally {
 							unlockDirectory(directoryName);
 						}
@@ -228,15 +240,24 @@ public class App {
 		return data;
 	}
 
+	private static String stripFirstWordIfStopWord(String test) {
+		if (test.toLowerCase().startsWith("the ")) {
+			return test.toLowerCase().substring(4, test.length());
+		}
+		else {
+			return test.toLowerCase();
+		}
+	}
+	
 	private static void encode(String handbrakeLocation, String outputDir,
 			String encodeDir, String title, Integer track) throws IOException {
-		System.out.println(outputDir + "/" + title.substring(0, 1).toLowerCase() + "/" + title + ".mp4");
-		File f=new File(outputDir + "/" + title.substring(0, 1).toLowerCase() + "/" + title + ".mp4");
+		System.out.println(outputDir + "/" + stripFirstWordIfStopWord(title).substring(0, 1) + "/" + title + ".mp4");
+		File f=new File(outputDir + "/" + stripFirstWordIfStopWord(title).substring(0, 1) + "/" + title + ".mp4");
 		f.getParentFile().mkdirs();
 		if (!f.exists()) {
 			ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "-i",
 					encodeDir, "-t", "" + track, "-Z", "AppleTV 3", "-E",
-					"ffaac", "-o", outputDir + "/" + title + ".mp4");
+					"ffaac", "-o", f.getAbsolutePath());
 			Map<String, String> env = pb.environment();
 			pb.directory(new File(encodeDir));
 			Process p = pb.start();
