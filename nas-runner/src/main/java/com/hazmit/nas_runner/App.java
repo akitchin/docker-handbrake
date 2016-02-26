@@ -211,8 +211,9 @@ public class App {
 											.getName()
 											+ " "
 											+ discTitle
-											+ "T"
-											+ trackNumber, trackNumber);
+											+ "t"
+											+ trackNumber, trackNumber, e.getValue()
+											.getName());
 								}
 								Files.move(Paths.get(directoryName), Paths.get(getDvdLocation(discTitle, args[1], e.getValue())), StandardCopyOption.ATOMIC_MOVE);
 						} finally {
@@ -253,9 +254,9 @@ public class App {
 	}
 	
 	private static void encode(String handbrakeLocation, String outputDir,
-			String encodeDir, String title, Integer track) throws IOException {
-		System.out.println(outputDir + "/" + stripFirstWordIfStopWord(title).substring(0, 1) + "/" + title + ".mp4");
-		File f=new File(outputDir + "/" + stripFirstWordIfStopWord(title).substring(0, 1) + "/" + title + ".mp4");
+			String encodeDir, String fileName, Integer track, String titleName) throws IOException {
+		System.out.println(outputDir + "/" + stripFirstWordIfStopWord(titleName).substring(0, 1) + "/" + titleName + "/" + fileName + ".mp4");
+		File f=new File(outputDir + "/" + stripFirstWordIfStopWord(titleName).substring(0, 1) + "/" + titleName + "/" + fileName + ".mp4");
 		f.getParentFile().mkdirs();
 		if (!f.exists()) {
 			ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "-i",
