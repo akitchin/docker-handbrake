@@ -23,9 +23,7 @@ RUN \
   rm -rf /var/lib/apt/lists/* && \
   rm -rf /var/cache/oracle-jdk7-installer
 
-RUN curl -L https://github.com/akitchin/docker-handbrake/archive/master.zip > master.zip
-RUN unzip master.zip
-RUN cd /docker-handbrake-master/nas-runner && mvn install
+ADD script.sh /
 
 # Define working directory.
 VOLUME /data
@@ -33,4 +31,4 @@ VOLUME /data
 # Define commonly used JAVA_HOME variable
 ENV JAVA_HOME /usr/lib/jvm/java-7-oracle
 
-CMD ["bash", "-c", "cd /docker-handbrake-master/nas-runner && mvn exec:java -Dexec.mainClass=com.hazmit.nas_runner.App -Dexec.args=\"/usr/bin/HandBrakeCLI /data/INCOMING\""]
+CMD ["bash", "-c", "/script.sh"]
