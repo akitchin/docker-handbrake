@@ -161,7 +161,9 @@ public class App {
 
 	public static void unlockDirectory(String directoryName) {
 		File f = new File(directoryName + File.separator + LOCK_FILE_NAME);
-		f.delete();
+		if (f.exists()) {
+			f.delete();			
+		}
 	}
 	
 	public static String getDvdLocation(String discTitle, String outputDir, ShowOrMovie showOrMovie) {
@@ -215,6 +217,7 @@ public class App {
 								Files.move(Paths.get(directoryName), Paths.get(getDvdLocation(discTitle, args[1], e.getValue())), StandardCopyOption.ATOMIC_MOVE);
 						} finally {
 							unlockDirectory(directoryName);
+							unlockDirectory(getDvdLocation(discTitle, args[1], e.getValue()));
 						}
 					}
 				}
