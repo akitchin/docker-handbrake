@@ -174,7 +174,7 @@ public class App {
 		} else {
 			File f=new File(outputDir + "/" + stripFirstWordIfStopWord(showOrMovie.getName()).substring(0, 1) + "/" + showOrMovie.getName() + "/VIDEO_TS");
 			f.mkdirs();
-			return outputDir + "/" + stripFirstWordIfStopWord(showOrMovie.getName()).substring(0, 1) + "/" + showOrMovie.getName() + "/VIDEO_TS/discTitle";			
+			return outputDir + "/" + stripFirstWordIfStopWord(showOrMovie.getName()).substring(0, 1) + "/" + showOrMovie.getName() + "/VIDEO_TS/" + discTitle;			
 		}
 	}
 	
@@ -255,8 +255,8 @@ public class App {
 	
 	private static void encode(String handbrakeLocation, String outputDir,
 			String encodeDir, String fileName, Integer track, String titleName) throws IOException {
-		System.out.println(outputDir + "/" + stripFirstWordIfStopWord(titleName).substring(0, 1) + "/" + titleName + "/" + fileName + ".mp4");
-		File f=new File(outputDir + "/" + stripFirstWordIfStopWord(titleName).substring(0, 1) + "/" + titleName + "/" + fileName + ".mp4");
+		System.out.println(outputDir + "/" + stripFirstWordIfStopWord(titleName).substring(0, 1) + "/" + stripFirstWordIfStopWord(titleName) + "/" + fileName + ".mp4");
+		File f=new File(outputDir + "/" + stripFirstWordIfStopWord(titleName).substring(0, 1) + "/" + stripFirstWordIfStopWord(titleName) + "/" + fileName + ".mp4");
 		f.getParentFile().mkdirs();
 		if (!f.exists()) {
 			ProcessBuilder pb = new ProcessBuilder(handbrakeLocation, "-i",
