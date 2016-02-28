@@ -93,7 +93,9 @@ public class App {
 			return Collections.EMPTY_LIST;
 		} else if (file.isDirectory() && looksLikeDVD(file)) {
 			files.add(file);
-		} else if (file.isDirectory()) {
+		} // we want to skip directories that look like they are part of the output structure
+		  //TODO want to do this in a more reliable way that length() > 1
+		else if (file.isDirectory() && file.getName().length() > 1) {
 			for (File subFile : file.listFiles()) {
 				files.addAll(findDVDS(subFile));
 			}
@@ -180,6 +182,7 @@ public class App {
 	
 	public static void main(String[] args) {
 
+		Entry<String, ShowOrMovie> entry=null;
 		try {
 			System.out.println("Welcome to the NAS Runner");
 
@@ -191,13 +194,13 @@ public class App {
 			Iterator<Entry<String, ShowOrMovie>> it = data.entrySet()
 					.iterator();
 			while (it.hasNext()) {
-				Entry<String, ShowOrMovie> e = it.next();
-				System.out.println(e.getValue().getName());
-				Iterator<String> it2 = e.getValue().getComponents().keySet()
+				entry = it.next();
+				System.out.println(entry.getValue().getName());
+				Iterator<String> it2 = entry.getValue().getComponents().keySet()
 						.iterator();
 				while (it2.hasNext()) {
 					String discTitle = it2.next();
-					String directoryName = e.getValue().getComponents()
+					String directoryName = entry.getValue().getComponents()
 							.get(discTitle).getAbsolutePath();
 					if (!isDirectoryLocked(directoryName)){
 						try {
@@ -207,24 +210,26 @@ public class App {
 										directoryName);
 								System.out.println("\t\t" + tracks);
 								for (Integer trackNumber : tracks) {
-									encode(args[0], args[1], directoryName, e.getValue()
+									encode(args[0], args[1], directoryName, entry.getValue()
 											.getName()
 											+ " "
-											+ discTitle
+											+ (("-".equals(discTitle)) ? "" : discTitle)
 											+ "t"
-											+ trackNumber, trackNumber, e.getValue()
+											+ trackNumber, trackNumber, entry.getValue()
 											.getName());
 								}
-								Files.move(Paths.get(directoryName), Paths.get(getDvdLocation(discTitle, args[1], e.getValue())), StandardCopyOption.ATOMIC_MOVE);
+								Files.move(Paths.get(directoryName), Paths.get(getDvdLocation(discTitle, args[1], entry.getValue())), StandardCopyOption.ATOMIC_MOVE);
 						} finally {
 							unlockDirectory(directoryName);
-							unlockDirectory(getDvdLocation(discTitle, args[1], e.getValue()));
+							unlockDirectory(getDvdLocation(discTitle, args[1], entry.getValue()));
 						}
 					}
 				}
 			}
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
+			if (entry!=null) {
+				System.err.println(entry);
+			}
 			e.printStackTrace();
 		}
 
